@@ -5,7 +5,7 @@ import pycuda.driver as cuda
 import tensorrt as trt
 import time
 
-TRT_PATH = '/home/tuan/SmartLab/engines/model_320_256.trt'
+TRT_PATH = '/home/tuan/FRCheckInSystem/src/engines/face_detector_320_192.trt'
 
 class FaceDetector(object):
     def _load_plugins(self):
@@ -39,7 +39,7 @@ class FaceDetector(object):
     def __init__(self, landmarks=False):
         self.landmarks = landmarks
         self.threshold = 0.65
-        self.img_h_new, self.img_w_new, self.scale_h, self.scale_w = 256, 320, 1, 1
+        self.img_h_new, self.img_w_new, self.scale_h, self.scale_w = 192, 320, 1, 1
         self.striped_h, self.striped_w =  int(self.img_h_new / 4), int(self.img_w_new / 4)
         # self.shape_of_output = [(1, 1, int(self.img_h_new / 4), int(self.img_w_new / 4)),
         #                    (1, 2, int(self.img_h_new / 4), int(self.img_w_new / 4)),
@@ -58,28 +58,26 @@ class FaceDetector(object):
             self.context = self.engine.create_execution_context()
             self.stream = cuda.Stream()
             self.inputs, self.outputs, self.bindings = self._allocate_buffers()
+
+            dummy_inp = np.random.normal(loc=100, scale=50, size=(self.img_h_new, self.img_w_new, 3)).astype(np.uint8)
+            self.inference_tensorrt(dummy_inp)
         except Exception as e:
-            raise RuntimeError('Fail to allocate CUDA resources') from e
+            raise RuntimeError('Fail to allocate CUDA resources in FaceDetector') from e
 
         
 
-    def __call__(self, img, height, width):
-        # h, w = img.shape[:2]
+    def __call__(self, img):
+        height, width = img.shape[:2]
         self.scale_h, self.scale_w = self.img_h_new / height, self.img_w_new / width
         # self.scale_h, self.scale_w 
         return self.inference_tensorrt(img)
 
     def preprocess(self, img):
-        t = time.time()
         img = cv2.resize(img, (self.img_w_new, self.img_h_new))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = img.transpose(2,0,1).astype(np.float32)
         img = img.reshape(-1)
-        print("Preproc : ", time.time() - t)
         return img
-        # img = (img - self.mean)/self.std
-        # img = np.expand_dims(img, axis=0)
-        # return np.array(img, dtype=np.float32, order='C')
     
     
     def inference_tensorrt(self, img):
