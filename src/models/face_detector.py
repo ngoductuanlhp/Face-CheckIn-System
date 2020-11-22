@@ -36,7 +36,7 @@ class FaceDetector(object):
     
         return inputs, outputs, bindings
 
-    def __init__(self, landmarks=False):
+    def __init__(self, landmarks=True):
         self.landmarks = landmarks
         self.threshold = 0.65
         self.img_h_new, self.img_w_new, self.scale_h, self.scale_w = 192, 320, 1, 1
@@ -58,7 +58,7 @@ class FaceDetector(object):
             self.context = self.engine.create_execution_context()
             self.stream = cuda.Stream()
             self.inputs, self.outputs, self.bindings = self._allocate_buffers()
-
+            print("[FaceDetector] Model loaded")
             dummy_inp = np.random.normal(loc=100, scale=50, size=(self.img_h_new, self.img_w_new, 3)).astype(np.uint8)
             self.inference_tensorrt(dummy_inp)
         except Exception as e:
@@ -130,6 +130,7 @@ class FaceDetector(object):
 
     def decode(self, heatmap, scale, offset, landmark, size):
         boxes = []
+        lm = []
         inds = np.where(heatmap > self.threshold)[0]
         c0, c1 = np.unravel_index(inds, (self.striped_h, self.striped_w))
         if c0.shape[0] > 0:
@@ -138,12 +139,20 @@ class FaceDetector(object):
             sc = np.exp(sc) * 4
             o = np.take(offset, inds, 1)
 
+            
+
             score = np.take(heatmap, inds, 0)
 
             x1 = (c1 +o[1] + 0.5) * 4 - sc[1] / 2
             y1 = (c0 +o[0] + 0.5) * 4 - sc[0] / 2
             x1 = np.clip(x1, 0, self.img_w_new)
             y1 = np.clip(y1, 0, self.img_h_new)
+
+            lm = np.take(landmark, inds, 1)
+            print("shape1: ", lm.shape)
+            lm[::2, :] = lm[::2, :]*sc[1] + x1
+            lm[1::2, :] = lm[1::2, :]*sc[0] + y1
+            
 
             x2 = x1 + sc[1]
             y2 = y1 + sc[0]
@@ -152,7 +161,12 @@ class FaceDetector(object):
             boxes = np.stack((x1,y1,x2,y2, score), axis=-1)
             keep = self.nms(boxes[:, :4], boxes[:, 4], 0.3)
             boxes = boxes[keep, :]
-        return boxes
+
+            lm = np.asarray(lm, dtype=np.float32).transpose()
+            lm = lm[keep, :]
+            print("shape3: ", lm.shape)
+            
+        return boxes, lm
 
 
     def nms(self, dets, scores, thresh):

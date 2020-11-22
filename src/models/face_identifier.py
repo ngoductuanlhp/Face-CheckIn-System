@@ -6,6 +6,7 @@ import tensorrt as trt
 import time
 
 TRT_PATH = '/home/tuan/FRCheckInSystem/src/engines/face_identifier.trt'
+EMBED_PATH = '/home/tuan/FRCheckInSystem/src/engines/test_db.npy'
 
 class FaceIdentifier(object):
     def _load_plugins(self):
@@ -39,6 +40,10 @@ class FaceIdentifier(object):
         self.mean = np.stack((np.ones((224,224))*0.6068*255, np.ones((224,224))*0.4517*255, np.ones((224,224))*0.38*255))
         self.std = np.stack((np.ones((224,224))*0.2492*255, np.ones((224,224))*0.2173*255, np.ones((224,224))*0.2082*255))
         
+        # self.db = torch.load(DB_PATH)
+        self.label = ['Hieu', 'Khuong']
+        self.embed = np.load(EMBED_PATH)
+
         self.trt_logger = trt.Logger(trt.Logger.INFO)
         try:
             self._load_plugins()
@@ -46,24 +51,31 @@ class FaceIdentifier(object):
             self.context = self.engine.create_execution_context()
             self.stream = cuda.Stream()
             self.inputs, self.outputs, self.bindings = self._allocate_buffers()
-
+            print("[FaceIdentifier] Model loaded")
             dummy_inp = np.random.normal(loc=100, scale=50, size=(self.img_size, self.img_size, 3)).astype(np.uint8)
             self.inference_tensorrt(dummy_inp)
         except Exception as e:
             raise RuntimeError('Fail to allocate CUDA resources in FaceIdentifier') from e
 
-        
+    def kNearest(self, inp, k=1):
+        dists = np.sqrt(np.sum((inp - self.embed) ** 2, axis=1))
+        idx = np.argmin(dists)
+        return idx, dists[idx]
 
-    def __call__(self, imgs):
-        results = []
-        if isinstance(imgs, list):
-            for img in imgs:
-                results.append(self.inference_tensorrt(img)[0])
+    def __call__(self, img):
+        # results = []
+        # if isinstance(imgs, list):
+        #     for img in imgs:
+        #         embed = self.inference_tensorrt(imgs)[0]
+        #         results.append(self.inference_tensorrt(img)[0])
+        # else:
+        embed = self.inference_tensorrt(img)
+        idx, dist = self.kNearest(embed)
+        if dist < 0.8:
+            result = self.label[idx]
         else:
-            t = time.time()
-            results = self.inference_tensorrt(imgs)[0]
-            print("Inden time: ", time.time() - t)
-        return results
+            result = 'Unknown'
+        return result, dist
 
     def preprocess(self, img):
         img = cv2.resize(img, (self.img_size, self.img_size))

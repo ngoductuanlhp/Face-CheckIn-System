@@ -4,6 +4,9 @@ import pycuda.driver as cuda
 from models.face_detector import FaceDetector
 from models.face_identifier import FaceIdentifier
 
+import queue
+import time
+
 
 def parse_model(mod):
     if mod == 'detector':
@@ -28,6 +31,9 @@ class TrtThread(threading.Thread):
 
         self.mod = mod
 
+        self.eventStop = threading.Event()
+        self.input_queue = queue.Queue(10)
+        self.output_queue = queue.Queue(10)
 
     def run(self):
 
@@ -35,14 +41,17 @@ class TrtThread(threading.Thread):
         cuda_ctx = cuda.Device(0).make_context()  # GPU 0
         self.trt_model = parse_model(self.mod)
         print('TrtThread: start running...')
-        while True:
+        while not self.eventStop.is_set():
             # with self.conditionStart as cond:
-            self.eventStart.wait()
-            self.eventStart.clear()
-            if self.input is not None:
-                self.result = self.trt_model(self.input)
-                self.input = None
-            self.eventEnd.set()
+            # self.eventStart.wait()
+            # self.eventStart.clear()
+
+            obj = self.input_queue.get()
+            crop, track_id = obj['crop'], obj['id']
+            label, dist = self.trt_model(crop)
+
+            self.output_queue.put({'id': track_id, 'label': label, 'dist': dist})
+            # self.eventEnd.set()
 
         del self.trt_model
         cuda_ctx.pop()
@@ -50,4 +59,6 @@ class TrtThread(threading.Thread):
         print('TrtThread: stopped...')
 
     def stop(self):
+        self.eventStop.set()
+        time.sleep(1)
         self.join()
