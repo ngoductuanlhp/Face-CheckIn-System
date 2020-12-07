@@ -30,10 +30,14 @@ class Tracker():
             self.sort.update()
 
     def process(self, dets, frame):
+
         track_dets = self.updateSort(dets)
 
         final_det = []
         inp_queue = []
+        if track_dets is None or len(track_dets) == 0:
+            return final_det, inp_queue
+
         for xmin, ymin, xmax, ymax, track_id in track_dets:
             xmin, ymin, xmax, ymax = checkbox(xmin, ymin, xmax, ymax)
             if xmin == -1:
@@ -51,6 +55,7 @@ class Tracker():
             else:
                 track = self.track_dict[track_id]
                 if (track['label'] == 'Unknown' and track['try'] <  5) or (track['dist'] > 0.6 and track['try'] <  10):
+                    track['try'] += 1
                     bbox = [int(i) for i in [xmin, ymin, xmax, ymax]]
                     crop = frame[bbox[1]:bbox[3], bbox[0]:bbox[2]]
                     inp_queue.append({'id': track_id, 'crop': crop})
@@ -61,7 +66,11 @@ class Tracker():
         tracklet = self.track_dict.get(res['id'])
         if tracklet is not None:
             tried = tracklet['try']
-            self.track_dict['id']= {'label': res['label'], 'dist': res['dist'], 'try': tried+1}
+            print(res['id'], tried)
+            self.track_dict[res['id']]['label'] = res['label']
+            self.track_dict[res['id']]['dist'] = res['dist']
+            # print('update trackdict', self.track_dict['id'])
+            # self.track_dict['id']= {'label': res['label'], 'dist': res['dist'], 'try': tried+1}
 
 
     

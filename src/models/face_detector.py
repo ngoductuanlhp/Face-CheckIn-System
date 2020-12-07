@@ -5,7 +5,7 @@ import pycuda.driver as cuda
 import tensorrt as trt
 import time
 
-TRT_PATH = '/home/tuan/FRCheckInSystem/src/engines/face_detector_320_192.trt'
+TRT_PATH = '/home/tuan/FRCheckInWeights/face_detector_320_192.trt'
 
 class FaceDetector(object):
     def _load_plugins(self):
@@ -36,19 +36,20 @@ class FaceDetector(object):
     
         return inputs, outputs, bindings
 
-    def __init__(self, landmarks=True):
+    def __init__(self, landmarks=False, batch=1):
         self.landmarks = landmarks
         self.threshold = 0.65
+        self.batch_size = batch
         self.img_h_new, self.img_w_new, self.scale_h, self.scale_w = 192, 320, 1, 1
         self.striped_h, self.striped_w =  int(self.img_h_new / 4), int(self.img_w_new / 4)
         # self.shape_of_output = [(1, 1, int(self.img_h_new / 4), int(self.img_w_new / 4)),
         #                    (1, 2, int(self.img_h_new / 4), int(self.img_w_new / 4)),
         #                    (1, 2, int(self.img_h_new / 4), int(self.img_w_new / 4)),
         #                    (1, 10, int(self.img_h_new / 4), int(self.img_w_new / 4))]
-        self.shape_of_output = [(self.striped_h * self.striped_w),
-                                (2, self.striped_h * self.striped_w),
-                                (2, self.striped_h * self.striped_w),
-                                (10, self.striped_h * self.striped_w)]
+        self.shape_of_output = [(self.batch_size, self.striped_h * self.striped_w),
+                                (self.batch_size, 2, self.striped_h * self.striped_w),
+                                (self.batch_size, 2, self.striped_h * self.striped_w),
+                                (self.batch_size, 10, self.striped_h * self.striped_w)]
 
         self.trt_logger = trt.Logger(trt.Logger.INFO)
 
@@ -138,9 +139,6 @@ class FaceDetector(object):
             
             sc = np.exp(sc) * 4
             o = np.take(offset, inds, 1)
-
-            
-
             score = np.take(heatmap, inds, 0)
 
             x1 = (c1 +o[1] + 0.5) * 4 - sc[1] / 2
@@ -149,7 +147,7 @@ class FaceDetector(object):
             y1 = np.clip(y1, 0, self.img_h_new)
 
             lm = np.take(landmark, inds, 1)
-            print("shape1: ", lm.shape)
+            # print("shape1: ", lm.shape)
             lm[::2, :] = lm[::2, :]*sc[1] + x1
             lm[1::2, :] = lm[1::2, :]*sc[0] + y1
             
@@ -164,7 +162,7 @@ class FaceDetector(object):
 
             lm = np.asarray(lm, dtype=np.float32).transpose()
             lm = lm[keep, :]
-            print("shape3: ", lm.shape)
+            # print("shape3: ", lm.shape)
             
         return boxes, lm
 

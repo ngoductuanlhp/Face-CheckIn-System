@@ -51,7 +51,7 @@ class Camera(object):
                 with self.rlock:
                     self.status = status
                     self.frame = frame
-            time.sleep(0.025)
+            # time.sleep(0.025)
 
     def read(self):
         with self.rlock:

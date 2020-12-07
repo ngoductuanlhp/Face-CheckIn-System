@@ -66,24 +66,28 @@ if __name__ == '__main__':
     detector = FaceDetector()
     tracker = Tracker()
     
-    vid = cv2.VideoCapture('/home/tuan/test1.avi')
+    # vid = cv2.VideoCapture('/home/tuan/test1.avi')
     fps_t = time.time()
     while True:
         count_inp = 0
         count_res = 0
-        
-        _, frame = vid.read()
+        final_dets = []
+        # _, frame = vid.read()
         # frame = cv2.imread('/home/tuan/face_sample1.jpg')
         
-        # frame = cam.read()
-        # frame = cv2.imread('/home/tuan/sample_img/ew_detection.png')
-        # frame = cv2.resize(frame, (640,360))
+        frame = cam.read()
         if frame is None:
             print("No frame")
             time.sleep(0.01)
             continue
+        # frame = cv2.imread('/home/tuan/sample_img/ew_detection.png')
+        frame = cv2.resize(frame, (640,360))
+        frame2 = cv2.flip(frame, 1)
 
-        dets, lms = detector(frame.copy())
+        dets = detector(frame.copy())
+
+        # print("Dets", dets)
+        # if len(dets) > 0:
 
         final_dets, inp_queue = tracker.process(dets, frame)
         count_inp = len(inp_queue)

@@ -4,9 +4,14 @@ import pycuda.autoinit
 import pycuda.driver as cuda
 import tensorrt as trt
 import time
+import os
+import pickle
 
-TRT_PATH = '/home/tuan/FRCheckInSystem/src/engines/face_identifier.trt'
-EMBED_PATH = '/home/tuan/FRCheckInSystem/src/engines/test_db.npy'
+TRT_PATH = '/home/tuan/FRCheckInWeights/face_identifier.trt'
+EMBED_PATH = '/home/tuan/FRCheckInWeights/test_db.npy'
+
+NAME_FACE = '/home/tuan/FRCheckInWeights/name_face'
+EMBEDDED_FACE = '/home/tuan/FRCheckInWeights/embedded_face'
 
 class FaceIdentifier(object):
     def _load_plugins(self):
@@ -35,15 +40,36 @@ class FaceIdentifier(object):
     
         return inputs, outputs, bindings
 
+    def _load_data(self):
+        if not os.path.exists(NAME_FACE) or not os.path.exists(EMBEDDED_FACE):
+            print("There is no data to load")
+            return None, None
+        with open (NAME_FACE, 'rb') as fp_1:
+            face_IDs = pickle.load(fp_1)
+
+        with open (EMBEDDED_FACE, 'rb') as fp_2:
+            face_encodings = pickle.load(fp_2)
+            face_encodings = np.stack(face_encodings, axis = 0)
+            num_embed = face_encodings.shape[0]
+            face_encodings = np.reshape(face_encodings, (num_embed, -1))
+
+        return face_IDs, face_encodings
+
+        
+
     def __init__(self):
         self.img_size = 224
         self.mean = np.stack((np.ones((224,224))*0.6068*255, np.ones((224,224))*0.4517*255, np.ones((224,224))*0.38*255))
         self.std = np.stack((np.ones((224,224))*0.2492*255, np.ones((224,224))*0.2173*255, np.ones((224,224))*0.2082*255))
         
         # self.db = torch.load(DB_PATH)
-        self.label = ['Hieu', 'Khuong']
-        self.embed = np.load(EMBED_PATH)
+        # self.label = ['Hieu', 'Khuong']
+        # self.embed = np.load(EMBED_PATH)
 
+        self.face_id, self.face_embed = self._load_data()
+        # print(self.face_id, self.face_embed)
+        # print(len(self.face_id))
+        # print(self.face_embed.shape)
         self.trt_logger = trt.Logger(trt.Logger.INFO)
         try:
             self._load_plugins()
@@ -58,7 +84,7 @@ class FaceIdentifier(object):
             raise RuntimeError('Fail to allocate CUDA resources in FaceIdentifier') from e
 
     def kNearest(self, inp, k=1):
-        dists = np.sqrt(np.sum((inp - self.embed) ** 2, axis=1))
+        dists = np.sqrt(np.sum((inp - self.face_embed) ** 2, axis=1))
         idx = np.argmin(dists)
         return idx, dists[idx]
 
@@ -71,8 +97,8 @@ class FaceIdentifier(object):
         # else:
         embed = self.inference_tensorrt(img)
         idx, dist = self.kNearest(embed)
-        if dist < 0.8:
-            result = self.label[idx]
+        if dist < 0.7:
+            result = self.face_id[idx]
         else:
             result = 'Unknown'
         return result, dist
@@ -103,3 +129,7 @@ class FaceIdentifier(object):
         final_output = self.outputs['host'].reshape(1,256).astype(np.float32)
         
         return final_output
+
+
+if __name__ == '__main__':
+    fi = FaceIdentifier()
