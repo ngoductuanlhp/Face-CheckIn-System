@@ -29,6 +29,7 @@ def draw_box_with_lm(img, dets, lms):
 
 def draw_box(img, dets, track_dict, fps = 0):
     global save_id
+    # print(dets)
     if len(dets) > 0:
         for det in dets:
             boxes = det[:4]
@@ -64,14 +65,16 @@ if __name__ == '__main__':
 
     cuda_ctx = cuda.Device(0).make_context()  # GPU 0
     detector = FaceDetector()
-    tracker = Tracker()
+    detector2 = FaceDetector()
+    tracker_arr = [Tracker(0), Tracker(1)]
+    # tracker = Tracker()
     
     # vid = cv2.VideoCapture('/home/tuan/test1.avi')
     fps_t = time.time()
     while True:
         count_inp = 0
         count_res = 0
-        final_dets = []
+        final_dets = [[None] for i in range(2)]
         # _, frame = vid.read()
         # frame = cv2.imread('/home/tuan/face_sample1.jpg')
         
@@ -84,31 +87,40 @@ if __name__ == '__main__':
         frame = cv2.resize(frame, (640,360))
         frame2 = cv2.flip(frame, 1)
 
-        dets = detector(frame.copy())
-
+        dets1 = detector(frame.copy())
+        dets2 = detector2(frame.copy())
         # print("Dets", dets)
         # if len(dets) > 0:
 
-        final_dets, inp_queue = tracker.process(dets, frame)
-        count_inp = len(inp_queue)
-        for inp in inp_queue:
-            identifierThread.input_queue.put(inp)
+        dets_arr = [dets1, dets2]
 
+        for idx, dets in enumerate(dets_arr):
+            final_dets[idx], inp_queue = tracker_arr[idx].process(dets, frame)
+            count_inp += len(inp_queue)
+            for inp in inp_queue:
+                identifierThread.input_queue.put(inp)
+
+        # for i in range(2):
         try:
             while(True):
                 res = identifierThread.output_queue.get_nowait()
-                tracker.updateTrackDict(res)
+                stt = res['stt']
+                tracker_arr[stt].updateTrackDict(res)
                 count_res += 1
         except queue.Empty:
             pass
 
         interval = time.time() - fps_t
         fps_t = time.time()
-        print("Total time: ", interval)
+        # print("Total time: ", interval)
         fps = int(1.0/interval)
-        img2 = frame.copy()
-        img2 = draw_box(img2, final_dets, tracker.track_dict, fps)
-        cv2.imshow('out', img2)
+        img = frame.copy()
+        img = draw_box(img, final_dets[0], tracker_arr[0].track_dict, fps)
+        img2 = frame2.copy()
+        img2 = draw_box(img2, final_dets[1], tracker_arr[1].track_dict, fps)
+
+        debug = np.hstack((img, img2))
+        cv2.imshow('out', debug)
 
         k = cv2.waitKey(1)
         if k & 0xFF == 27:

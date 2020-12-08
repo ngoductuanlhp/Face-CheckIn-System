@@ -2,6 +2,7 @@ import cv2
 import threading
 import time
 
+
 def gstreamer_pipeline(
     capture_width=1280,
     capture_height=720,
@@ -28,9 +29,9 @@ def gstreamer_pipeline(
             display_height,
         )
     )
-
-class Camera(object):
-    def __init__(self, src=0):
+        
+class CSICamera():
+    def __init__(self):
         self.capture = cv2.VideoCapture(gstreamer_pipeline(),cv2.CAP_GSTREAMER)
         # Start the thread to read frames from the video stream
         self.rlock = threading.RLock()
@@ -67,17 +68,29 @@ class Camera(object):
         self.thread.join()
         self.capture.release()
 
+
+
 if __name__ == '__main__':
-    cam = Camera()
+    cam = CSICamera()
     cam.start()
     cv2.waitKey(100)
+
+    cam2 = OrbCamera()
+    cam2.start()
+
     t = time.time()
     while(True):
-        print("Interval time: ", time.time() - t)
         t = time.time()
         img = cam.read()
-        # if img is not None:
-        cv2.imshow("Img", img)
+        # print("img", img)
+        if img is not None:
+            img = cv2.resize(img, (320, 180))
+            cv2.imshow("Img", img)
+
+        img2 = cam2.read()
+        if img2 is not None:
+            img2 = cv2.resize(img2, (320, 240))
+            cv2.imshow("Img2", img2)
         k = cv2.waitKey(1)
         if k & 0xFF == 27:
             break

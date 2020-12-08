@@ -17,7 +17,8 @@ class IdentifierThread(threading.Thread):
 
         self.eventStop = threading.Event()
         self.input_queue = queue.Queue(10)
-        self.output_queue = queue.Queue(10)
+        self.output_queue0 = queue.Queue(10)
+        self.output_queue1 = queue.Queue(10)
 
     def run(self):
 
@@ -28,10 +29,13 @@ class IdentifierThread(threading.Thread):
         while not self.eventStop.is_set():
 
             obj = self.input_queue.get()
-            crop, track_id = obj['crop'], obj['id']
+            stt, crop, track_id = obj['stt'], obj['crop'], obj['id']
             label, dist = self.trt_model(crop)
 
-            self.output_queue.put({'id': track_id, 'label': label, 'dist': dist})
+            if stt == 0:
+                self.output_queue0.put({'stt': stt, 'id': track_id, 'label': label, 'dist': dist})
+            else:
+                self.output_queue1.put({'stt': stt, 'id': track_id, 'label': label, 'dist': dist})
 
         del self.trt_model
         cuda_ctx.pop()

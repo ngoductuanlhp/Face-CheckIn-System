@@ -5,7 +5,7 @@ import pycuda.driver as cuda
 import tensorrt as trt
 import time
 
-TRT_PATH = '/home/tuan/FRCheckInWeights/face_detector_320_192.trt'
+TRT_PATH = '/home/tuan/FRCheckInWeights/face_detector_2_192_320.trt'
 
 class FaceDetector(object):
     def _load_plugins(self):
@@ -21,7 +21,7 @@ class FaceDetector(object):
         bindings = []
         for binding in self.engine:
             size = trt.volume(self.engine.get_binding_shape(binding)) * self.engine.max_batch_size
-            # print("szie:", size)
+            print("szie:", size)
             dtype = trt.nptype(self.engine.get_binding_dtype(binding))
             # Allocate host and device buffers
             host_mem = cuda.pagelocked_empty(size, dtype)
@@ -46,10 +46,10 @@ class FaceDetector(object):
         #                    (1, 2, int(self.img_h_new / 4), int(self.img_w_new / 4)),
         #                    (1, 2, int(self.img_h_new / 4), int(self.img_w_new / 4)),
         #                    (1, 10, int(self.img_h_new / 4), int(self.img_w_new / 4))]
-        self.shape_of_output = [(self.striped_h * self.striped_w),
-                                (2, self.striped_h * self.striped_w),
-                                (2, self.striped_h * self.striped_w),
-                                (10, self.striped_h * self.striped_w)]
+        self.shape_of_output = [(self.batch_size, self.striped_h * self.striped_w),
+                                (self.batch_size, 2, self.striped_h * self.striped_w),
+                                (self.batch_size, 2, self.striped_h * self.striped_w),
+                                (self.batch_size, 10, self.striped_h * self.striped_w)]
 
         self.trt_logger = trt.Logger(trt.Logger.INFO)
 
@@ -60,18 +60,19 @@ class FaceDetector(object):
             self.stream = cuda.Stream()
             self.inputs, self.outputs, self.bindings = self._allocate_buffers()
             print("[FaceDetector] Model loaded")
-            dummy_inp = np.random.normal(loc=100, scale=50, size=(self.img_h_new, self.img_w_new, 3)).astype(np.uint8)
-            self.inference_tensorrt(dummy_inp)
+            # dummy_inp = np.random.normal(loc=100, scale=50, size=(self.img_h_new, self.img_w_new, 3)).astype(np.uint8)
+            # self.inference_tensorrt(dummy_inp)
         except Exception as e:
             raise RuntimeError('Fail to allocate CUDA resources in FaceDetector') from e
 
         
 
-    def __call__(self, img):
-        height, width = img.shape[:2]
+    def __call__(self, imgs):
+        height, width = imgs[0].shape[:2]
         self.scale_h, self.scale_w = self.img_h_new / height, self.img_w_new / width
         # self.scale_h, self.scale_w 
-        return self.inference_tensorrt(img)
+        # print("scale", self.scale_h, self.scale_w )
+        return self.inference_tensorrt(imgs)
 
     def preprocess(self, img):
         img = cv2.resize(img, (self.img_w_new, self.img_h_new))
@@ -81,16 +82,20 @@ class FaceDetector(object):
         return img
     
     
-    def inference_tensorrt(self, img):
+    def inference_tensorrt(self, imgs):
         # t = time.time()
-        self.inputs[0]['host'] = self.preprocess(img)
+        pre_proc1 = self.preprocess(imgs[0])
+        pre_proc2 = self.preprocess(imgs[1])
+        pre_proc = np.hstack((pre_proc2, pre_proc1))
+
+        self.inputs[0]['host'] = pre_proc
 
         # start = time.time()
         for inp in self.inputs:
             cuda.memcpy_htod_async(inp['device'], inp['host'], self.stream)
         # run inference
         
-        self.context.execute_async(
+        self.context.execute_async_v2(
             bindings=self.bindings,
             stream_handle=self.stream.handle)
         
@@ -107,7 +112,11 @@ class FaceDetector(object):
         
         heatmap, scale, offset, lms = [output.reshape(shape) for output, shape in zip(trt_outputs, self.shape_of_output)]
         # print("Infer time: ", time.time() - t)
-        return self.postprocess(heatmap, lms, offset, scale)
+        print("HM", heatmap[1])
+        res = []
+        for i in range(self.batch_size):
+            res.append(self.postprocess(heatmap[i], lms[i], offset[i], scale[i]))
+        return res
 
     def postprocess(self, heatmap, lms, offset, scale):
         if self.landmarks:
@@ -116,6 +125,8 @@ class FaceDetector(object):
             # self.decode(heatmap, scale, offset, None, (self.img_h_new, self.img_w_new))
             dets = self.decode(heatmap, scale, offset, None, (self.img_h_new, self.img_w_new))
             
+        # print("det shape", dets.shape)
+        # print("det", dets)
         if len(dets) > 0:
             dets[:, 0:4:2], dets[:, 1:4:2] = dets[:, 0:4:2] / self.scale_w, dets[:, 1:4:2] / self.scale_h
             if self.landmarks:
@@ -147,7 +158,7 @@ class FaceDetector(object):
             y1 = np.clip(y1, 0, self.img_h_new)
 
             # lm = np.take(landmark, inds, 1)
-            # print("shape1: ", lm.shape)
+            # # print("shape1: ", lm.shape)
             # lm[::2, :] = lm[::2, :]*sc[1] + x1
             # lm[1::2, :] = lm[1::2, :]*sc[0] + y1
             
@@ -199,3 +210,11 @@ class FaceDetector(object):
             order = order[inds + 1]
         # print("NMS score: ", time.time() - t)
         return keep
+
+if __name__ == '__main__':
+    fd = FaceDetector(batch=2)
+    img1 = np.random.normal(loc=100, scale=50, size=(192, 320, 3)).astype(np.uint8)
+    img2 = np.random.normal(loc=100, scale=50, size=(192, 320, 3)).astype(np.uint8)
+    dets = fd([img1, img2])
+    print(len(dets))
+

@@ -19,9 +19,12 @@ def checkbox(xmin, ymin, xmax, ymax):
     return xmin, ymin, xmax, ymax
 
 class Tracker():
-    def __init__(self):
+    def __init__(self, stt):
+        self.stt = stt
         self.sort = Sort(min_hits=1, max_age=10)
         self.track_dict = {}
+
+        self.entry_dict = {}
 
     def updateSort(self, dets):
         if dets.shape[0] > 0: 
@@ -51,27 +54,34 @@ class Tracker():
                 self.track_dict[track_id] = {'label': 'Unknown', 'dist': 100, 'try': 0}
                 bbox = [int(i) for i in [xmin, ymin, xmax, ymax]]
                 crop = frame[bbox[1]:bbox[3], bbox[0]:bbox[2]]
-                inp_queue.append({'id': track_id, 'crop': crop})
+                inp_queue.append({'stt': self.stt, 'id': track_id, 'crop': crop})
             else:
                 track = self.track_dict[track_id]
-                if (track['label'] == 'Unknown' and track['try'] <  5) or (track['dist'] > 0.6 and track['try'] <  10):
+                if (track['label'] == 'Unknown' and track['try'] <  20) or (track['dist'] > 0.6 and track['try'] <  20):
                     track['try'] += 1
-                    bbox = [int(i) for i in [xmin, ymin, xmax, ymax]]
-                    crop = frame[bbox[1]:bbox[3], bbox[0]:bbox[2]]
-                    inp_queue.append({'id': track_id, 'crop': crop})
+                    if track['try'] % 2 == 0:
+                        bbox = [int(i) for i in [xmin, ymin, xmax, ymax]]
+                        crop = frame[bbox[1]:bbox[3], bbox[0]:bbox[2]]
+                        inp_queue.append({'stt': self.stt, 'id': track_id, 'crop': crop})
 
         return final_det, inp_queue
 
     def updateTrackDict(self, res):
         tracklet = self.track_dict.get(res['id'])
         if tracklet is not None:
-            tried = tracklet['try']
-            print(res['id'], tried)
             self.track_dict[res['id']]['label'] = res['label']
             self.track_dict[res['id']]['dist'] = res['dist']
-            # print('update trackdict', self.track_dict['id'])
-            # self.track_dict['id']= {'label': res['label'], 'dist': res['dist'], 'try': tried+1}
 
+            # FIXME if new confirmed, check entry dict
+            if res['label'] != 'Unknown' and (self.track_dict[res['id']]['try'] >= 20 or res['dist'] <= 0.6):
+                t_now = time.time()
+                entry = self.entry_dict.get(res['label'])
+                if entry is None or (entry is not None and t_now - entry['last_update'] > 10):
+                    self.entry_dict[res['label']] = {'last_update': t_now}
+                    self.sendToDB()
 
+    # FIXME Lam giup t nha
+    def sendToDB(self):
+        print("Send to DB")
     
     
