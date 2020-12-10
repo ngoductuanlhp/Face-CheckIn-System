@@ -21,7 +21,7 @@ stop_flag = False
 img1, img2 = None, None
 sync_img1, sync_img2 = False, False
 
-def draw_box(img, dets, track_dict, fps = 0):
+def draw_box(img, dets, track_dict, fps = 0, proc_id=0):
     global save_id
     if len(dets) > 0:
         for det in dets:
@@ -32,10 +32,14 @@ def draw_box(img, dets, track_dict, fps = 0):
             det_id = det[4]
             track = track_dict.get(det_id)
             name = track['label']
-            cv2.putText(img, "TrackId: " + str(det_id), (boxes[0],boxes[1] - 20), font, 0.6, (255,0,0), 2, cv2.LINE_AA)
+            # cv2.putText(img, "TrackId: " + str(det_id), (boxes[0],boxes[1] - 20), font, 0.6, (255,0,0), 2, cv2.LINE_AA)
             if name != None:
                 cv2.putText(img, "Name: " + name, (boxes[0], boxes[1]), font, 0.6, (255,0,0), 2, cv2.LINE_AA)
-    cv2.putText(img, "FPS: " + str(fps), (15,15), font, 0.5, (0,0,255), 2, cv2.LINE_AA)
+    if proc_id == 0:
+        cv2.putText(img, "IN_CAM", (15,15), font, 0.8, (0,0,255), 2, cv2.LINE_AA)
+    else:
+        cv2.putText(img, "OUT_CAM", (15,15), font, 0.8, (0,0,255), 2, cv2.LINE_AA)
+    cv2.putText(img, "FPS: " + str(fps), (15,70), font, 0.8, (0,0,255), 2, cv2.LINE_AA)
     return img
 
 
@@ -87,10 +91,10 @@ def main_process(proc_id, cam, iden_thread):
         
         fps = int(1.0/interval)
         if proc_id == 0:
-            img1 = draw_box(frame, final_dets, tracker.track_dict, fps)
+            img1 = draw_box(frame, final_dets, tracker.track_dict, fps, proc_id=proc_id)
             sync_img1 = True
         else:
-            img2 = draw_box(frame, final_dets, tracker.track_dict, fps)
+            img2 = draw_box(frame, final_dets, tracker.track_dict, fps, proc_id=proc_id)
             sync_img2 = True
 
 
@@ -116,11 +120,11 @@ def main():
     while True:
         if sync_img1:
             sync_img1 = False
-            img1_small = cv2.resize(img1, (480,270))
+            img1_small = cv2.resize(img1, (640,360))
             cv2.imshow("IMG1", img1_small)
         if sync_img2:
             sync_img2 = False
-            img2_small = cv2.resize(img2, (480,360))
+            img2_small = cv2.resize(img2, (640,480))
             cv2.imshow('IMG2', img2_small)
         k = cv2.waitKey(1)
         if k & 0xFF == 27:

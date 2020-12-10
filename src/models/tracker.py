@@ -5,9 +5,11 @@ import cv2
 import os
 import time
 import threading
+from utils.db_connect import ConnectDB
 
 IMG_H = 360
 IMG_W = 640
+# USER_ID = {'TKhoa': 1, 'Khuong': 2, 'Dang': 11, 'Khoi': 9}
 
 def checkbox(xmin, ymin, xmax, ymax):
     if xmin == xmax or ymin == ymax:
@@ -20,11 +22,13 @@ def checkbox(xmin, ymin, xmax, ymax):
 
 class Tracker():
     def __init__(self, stt):
+        self.db = ConnectDB()
         self.stt = stt
         self.sort = Sort(min_hits=1, max_age=10)
         self.track_dict = {}
 
         self.entry_dict = {}
+        self.user_dict = {'TKhoa': 1, 'Khuong': 2, 'Dang': 5, 'Khoi': 4}
 
     def updateSort(self, dets):
         if dets.shape[0] > 0: 
@@ -78,10 +82,22 @@ class Tracker():
                 entry = self.entry_dict.get(res['label'])
                 if entry is None or (entry is not None and t_now - entry['last_update'] > 10):
                     self.entry_dict[res['label']] = {'last_update': t_now}
-                    self.sendToDB()
+                    self.sendToDB(res['label'])
 
     # FIXME Lam giup t nha
-    def sendToDB(self):
-        print("Send to DB")
+    def sendToDB(self, name):
+        cus_id = self.user_dict.get(name)
+        if cus_id is not None:
+            if self.stt == 0:
+                res = self.db.goIn(int(cus_id))
+                result = 'success' if res == 0 else 'failed'
+                if res == 0:
+                    print("[IN_CAM] User %s enters room 201 B4!!!" % name)
+            else:
+                res = self.db.goOut(int(cus_id))
+                result = 'success' if res == 0 else 'failed'
+                if res == 0:
+                    print("[OUT_CAM] User %s leaves room 201 B4!!!" % name)
+            
     
     

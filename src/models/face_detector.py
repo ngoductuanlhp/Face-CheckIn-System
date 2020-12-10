@@ -38,7 +38,7 @@ class FaceDetector(object):
 
     def __init__(self, landmarks=False, batch=1):
         self.landmarks = landmarks
-        self.threshold = 0.65
+        self.threshold = 0.4
         self.batch_size = batch
         self.img_h_new, self.img_w_new, self.scale_h, self.scale_w = 192, 320, 1, 1
         self.striped_h, self.striped_w =  int(self.img_h_new / 4), int(self.img_w_new / 4)

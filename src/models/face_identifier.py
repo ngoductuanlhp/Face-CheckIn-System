@@ -13,6 +13,8 @@ EMBED_PATH = '/home/tuan/FRCheckInWeights/test_db.npy'
 NAME_FACE = '/home/tuan/FRCheckInWeights/name_face'
 EMBEDDED_FACE = '/home/tuan/FRCheckInWeights/embedded_face'
 
+
+
 class FaceIdentifier(object):
     def _load_plugins(self):
         trt.init_libnvinfer_plugins(self.trt_logger, '')
@@ -43,6 +45,7 @@ class FaceIdentifier(object):
     def _load_data(self):
         if not os.path.exists(NAME_FACE) or not os.path.exists(EMBEDDED_FACE):
             print("There is no data to load")
+
             return None, None
         with open (NAME_FACE, 'rb') as fp_1:
             face_IDs = pickle.load(fp_1)
@@ -97,7 +100,7 @@ class FaceIdentifier(object):
         # else:
         embed = self.inference_tensorrt(img)
         idx, dist = self.kNearest(embed)
-        if dist < 0.7:
+        if dist < 0.65:
             result = self.face_id[idx]
         else:
             result = 'Unknown'
