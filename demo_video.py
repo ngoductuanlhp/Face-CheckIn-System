@@ -6,6 +6,7 @@ import pycuda.driver as cuda
 import numpy as np
 import queue
 import copy
+import argparse
 
 from models.identifier_thread import IdentifierThread
 from models.face_detector import FaceDetector
@@ -32,9 +33,9 @@ def draw_box(img, dets, fps = 0):
     cv2.putText(draw, "FPS: " + str(fps), (15,15), font, 0.6, (0,0,255), 2, cv2.LINE_AA)
     return draw
 
-def readVid():
+def readVid(vid_path):
     global inp_img, lock, sync_img2
-    cap = cv2.VideoCapture('/home/tuan/crowded_Trim.mp4')
+    cap = cv2.VideoCapture(vid_path)
     if (cap.isOpened()== False): 
         print("Error opening video stream or file")
 
@@ -83,8 +84,15 @@ def main_process():
 def main():
     global stop_flag, img1, sync_img1, dets1, fps
 
-    cam_thread = threading.Thread(name="cam_thread", target=readVid)
-    cam_thread.start()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-v", "--vid", required=True,
+        help="video name")
+    args = vars(ap.parse_args())
+
+    vid_path = os.path.join('./videos/', str(args["vid"]))
+
+    vid_thread = threading.Thread(name="vid_thread", target=readVid, args=[vid_path])
+    vid_thread.start()
     time.sleep(0.01)
     in_thread = threading.Thread(name="in_thread", target=main_process)
     in_thread.start()

@@ -5,6 +5,7 @@ import threading
 import pycuda.driver as cuda
 import numpy as np
 import queue
+import argparse
 
 from utils.orb_camera import OrbCamera
 from utils.csi_camera import CSICamera
@@ -101,21 +102,29 @@ def main_process(proc_id, cam, iden_thread):
 def main():
     global stop_flag, img1, img2, sync_img1, sync_img2
 
-    cam1 = CSICamera()
-    cam1.start()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-csi", "--csicam", default=True, help="enable csi camera")
+    ap.add_argument("-orb", "--orbcam", default=True, help="enable orbbec camera")
 
-    cam2 = OrbCamera()
-    cam2.start()
+    args = vars(ap.parse_args())
 
     identifierThread = IdentifierThread()
     identifierThread.start()
     time.sleep(0.1)
 
-    in_thread = threading.Thread(name="in_thread", target=main_process, args=[0, cam1, identifierThread])
-    in_thread.start()
+    if args["csicam"]:
+        cam1 = CSICamera()
+        cam1.start()
 
-    out_thread = threading.Thread(name="out_thread", target=main_process, args=[1, cam2, identifierThread])
-    out_thread.start()
+        in_thread = threading.Thread(name="in_thread", target=main_process, args=[0, cam1, identifierThread])
+        in_thread.start()
+
+    if args["orbcam"]:
+        cam2 = OrbCamera()
+        cam2.start()
+
+        out_thread = threading.Thread(name="out_thread", target=main_process, args=[1, cam2, identifierThread])
+        out_thread.start()
 
     while True:
         if sync_img1:
@@ -129,7 +138,10 @@ def main():
         k = cv2.waitKey(1)
         if k & 0xFF == 27:
             stop_flag = True
-            cam.stop()
+            if args["csicam"]:
+                cam1.stop()
+            if args["orbcam"]:
+                cam2.stop()
             identifierThread.stop()
             cv2.destroyAllWindows()
             break
