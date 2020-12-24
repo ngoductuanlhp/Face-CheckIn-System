@@ -36,16 +36,12 @@ class FaceDetector(object):
     
         return inputs, outputs, bindings
 
-    def __init__(self, landmarks=False, batch=1):
+    def __init__(self, detector_path, landmarks=False, batch=1):
         self.landmarks = landmarks
         self.threshold = 0.4
         self.batch_size = batch
         self.img_h_new, self.img_w_new, self.scale_h, self.scale_w = 192, 320, 1, 1
         self.striped_h, self.striped_w =  int(self.img_h_new / 4), int(self.img_w_new / 4)
-        # self.shape_of_output = [(1, 1, int(self.img_h_new / 4), int(self.img_w_new / 4)),
-        #                    (1, 2, int(self.img_h_new / 4), int(self.img_w_new / 4)),
-        #                    (1, 2, int(self.img_h_new / 4), int(self.img_w_new / 4)),
-        #                    (1, 10, int(self.img_h_new / 4), int(self.img_w_new / 4))]
         self.shape_of_output = [(self.striped_h * self.striped_w),
                                 (2, self.striped_h * self.striped_w),
                                 (2, self.striped_h * self.striped_w),
@@ -55,7 +51,7 @@ class FaceDetector(object):
 
         try:
             self._load_plugins()
-            self.engine = self._load_engine(TRT_PATH)
+            self.engine = self._load_engine(detector_path)
             self.context = self.engine.create_execution_context()
             self.stream = cuda.Stream()
             self.inputs, self.outputs, self.bindings = self._allocate_buffers()

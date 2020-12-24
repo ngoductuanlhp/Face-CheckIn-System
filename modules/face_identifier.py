@@ -19,8 +19,8 @@ class FaceIdentifier(object):
     def _load_plugins(self):
         trt.init_libnvinfer_plugins(self.trt_logger, '')
 
-    def _load_engine(self, model_path):
-        with open(model_path, 'rb') as f, trt.Runtime(self.trt_logger) as runtime:
+    def _load_engine(self, identifier_path):
+        with open(identifier_path, 'rb') as f, trt.Runtime(self.trt_logger) as runtime:
             return runtime.deserialize_cuda_engine(f.read())
 
     def _allocate_buffers(self):
@@ -60,23 +60,17 @@ class FaceIdentifier(object):
 
         
 
-    def __init__(self):
+    def __init__(self, identifier_path):
         self.img_size = 224
         self.mean = np.stack((np.ones((224,224))*0.6068*255, np.ones((224,224))*0.4517*255, np.ones((224,224))*0.38*255))
         self.std = np.stack((np.ones((224,224))*0.2492*255, np.ones((224,224))*0.2173*255, np.ones((224,224))*0.2082*255))
         
-        # self.db = torch.load(DB_PATH)
-        # self.label = ['Hieu', 'Khuong']
-        # self.embed = np.load(EMBED_PATH)
 
         self.face_id, self.face_embed = self._load_data()
-        # print(self.face_id, self.face_embed)
-        # print(len(self.face_id))
-        # print(self.face_embed.shape)
         self.trt_logger = trt.Logger(trt.Logger.INFO)
         try:
             self._load_plugins()
-            self.engine = self._load_engine(TRT_PATH)
+            self.engine = self._load_engine(identifier_path)
             self.context = self.engine.create_execution_context()
             self.stream = cuda.Stream()
             self.inputs, self.outputs, self.bindings = self._allocate_buffers()
@@ -92,12 +86,6 @@ class FaceIdentifier(object):
         return idx, dists[idx]
 
     def __call__(self, img):
-        # results = []
-        # if isinstance(imgs, list):
-        #     for img in imgs:
-        #         embed = self.inference_tensorrt(imgs)[0]
-        #         results.append(self.inference_tensorrt(img)[0])
-        # else:
         embed = self.inference_tensorrt(img)
         idx, dist = self.kNearest(embed)
         if dist < 0.65:

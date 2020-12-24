@@ -8,12 +8,13 @@ import queue
 import time
 
 class IdentifierThread(threading.Thread):
-    def __init__(self):
+    def __init__(self, identifier_path):
         threading.Thread.__init__(self)
         self.cuda_ctx = None  # to be created when run
         self.trt_model = None   # to be created when run
 
         self.input = None
+        self.identifier_path = identifier_path
 
         self.eventStop = threading.Event()
         self.input_queue = queue.Queue(10)
@@ -24,7 +25,7 @@ class IdentifierThread(threading.Thread):
 
         print('TrtThread: loading the TRT model...')
         cuda_ctx = cuda.Device(0).make_context()  # GPU 0
-        self.trt_model = FaceIdentifier()
+        self.trt_model = FaceIdentifier(self.identifier_path)
         print('TrtThread: start running...')
         while not self.eventStop.is_set():
 

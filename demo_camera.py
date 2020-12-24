@@ -9,9 +9,9 @@ import argparse
 
 from utils.orb_camera import OrbCamera
 from utils.csi_camera import CSICamera
-from models.identifier_thread import IdentifierThread
-from models.face_detector import FaceDetector
-from models.tracker import Tracker
+from modules.identifier_thread import IdentifierThread
+from modules.face_detector import FaceDetector
+from modules.tracker import Tracker
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -44,11 +44,11 @@ def draw_box(img, dets, track_dict, fps = 0, proc_id=0):
     return img
 
 
-def main_process(proc_id, cam, iden_thread):
+def main_process(proc_id, cam, iden_thread, detector_path):
     global stop_flag, img1, img2, sync_img1, sync_img2
     
     cuda_ctx = cuda.Device(0).make_context()  # GPU 0
-    detector = FaceDetector()
+    detector = FaceDetector(detector_path)
     tracker = Tracker(proc_id)
     fps_t = time.time()
     while not stop_flag:
@@ -105,10 +105,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-csi", "--csicam", default=True, help="enable csi camera")
     ap.add_argument("-orb", "--orbcam", default=True, help="enable orbbec camera")
+    ap.add_argument("-d", "--detectionengine", default='centerface_320_180.trt', help="face-detection engine name")
+    ap.add_argument("-r", "--recognizerengine", default='face_identifier.trt', help="face-detection engine name")
 
     args = vars(ap.parse_args())
 
-    identifierThread = IdentifierThread()
+    detector_path = os.path.join('./engines', args["detectionengine"])
+    identifier_path = os.path.join('./engines', args["identifierengine"])
+
+    identifierThread = IdentifierThread(identifier_path)
     identifierThread.start()
     time.sleep(0.1)
 
@@ -116,14 +121,14 @@ def main():
         cam1 = CSICamera()
         cam1.start()
 
-        in_thread = threading.Thread(name="in_thread", target=main_process, args=[0, cam1, identifierThread])
+        in_thread = threading.Thread(name="in_thread", target=main_process, args=[0, cam1, identifierThread, detector_path])
         in_thread.start()
 
     if args["orbcam"]:
         cam2 = OrbCamera()
         cam2.start()
 
-        out_thread = threading.Thread(name="out_thread", target=main_process, args=[1, cam2, identifierThread])
+        out_thread = threading.Thread(name="out_thread", target=main_process, args=[1, cam2, identifierThread, detector_path])
         out_thread.start()
 
     while True:

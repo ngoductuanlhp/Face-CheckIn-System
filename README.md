@@ -45,10 +45,10 @@ Link download: [weights](https://drive.google.com/drive/folders/1eC72Su4MwZJ67Od
     python3 face_detection/convert_detector.py
     ```
     
-6. Download ONNX weight for FaceRecognition (in our provided link). Put it in folder face_recognition. Rename the model name in **convert_recog**. Run the following command to build the TensorRT engine (it can take a few minutes). Put the new TRT engines to the engine folder.
+6. Download ONNX weight for FaceIdentifier (in our provided link). Put it in folder face_identifier. Rename the model name in **convert_identifier.py**. Run the following command to build the TensorRT engine (it can take a few minutes). Put the new TRT engines to the engine folder.
 
     ```bash
-    python3 face_recognition/convert_recog.py
+    python3 face_identifier/convert_identifier.py
     ```
 
 7. Test the camera:
@@ -84,7 +84,7 @@ Link download: [weights](https://drive.google.com/drive/folders/1eC72Su4MwZJ67Od
 
 ## Demo
 
-### Demo with video
+### Demo with video (only detection, no identification)
 
 1. Put the video file in folder videos.
 2. Run:
@@ -94,6 +94,7 @@ Link download: [weights](https://drive.google.com/drive/folders/1eC72Su4MwZJ67Od
     ```
 
 ### Demo with real camera
+
 Run:
 
 ```bash

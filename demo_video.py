@@ -8,8 +8,8 @@ import queue
 import copy
 import argparse
 
-from models.identifier_thread import IdentifierThread
-from models.face_detector import FaceDetector
+from modules.identifier_thread import IdentifierThread
+from modules.face_detector import FaceDetector
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 
