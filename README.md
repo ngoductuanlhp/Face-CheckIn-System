@@ -19,8 +19,12 @@ In this project, we develop and deploy a **check-in system based on Face Recogni
 1. OS: **Jetpack 4.4.1** or later (We do not ensure that the older Jetpack will work well without problems)
 2. OpenCV 4.1, cuDNN 8.0, Cuda 10.2, TensorRT 7.1.3 (all are included in Jetpack 4.4.1)
 3. Python package:
+    * Cython
     * pycuda
     * tensorrt
+    * pymssql
+    * primesense
+    * lxml
     * pickle
     * filterpy
     * numpy
