@@ -42,16 +42,16 @@ Link download: [weights](https://drive.google.com/drive/folders/1eC72Su4MwZJ67Od
     ```
 
 4. If any package conflicts with the hardware, please search in Google or NVidia forum for solution :))).
-5. Download ONNX weight for FaceDetection (in our provided link), we provide 3 models for different resolutions for the input image. Put it in folder face_detection. Rename the model name in **convert_detector.py**. Run the following command to build the TensorRT engine (it can take a few minutes). Put the new TRT engine to the engines folder.
+5. Download ONNX weight for FaceDetection (in our provided link), we provide 3 models for different resolutions for the input image. Put it in folder weights (create if not exist). Modify the name of onnx model and trt model in **onnx_to_trt.py**. Run the following command to build the TensorRT engine (it can take a few minutes). Put the new TRT engine to the engines folder.
 
     ```bash
-    python3 face_detection/convert_detector.py
+    python3 onnx_to_trt.py
     ```
     
-6. Download ONNX weight for FaceIdentifier (in our provided link). Put it in folder face_identifier. Rename the model name in **convert_identifier.py**. Run the following command to build the TensorRT engine (it can take a few minutes). Put the new TRT engines to the engine folder.
+6. Download ONNX weight for FaceIdentifier (in our provided link). Put it in folder weights (create if not exist). Modify the name of onnx model and trt model in **onnx_to_trt.py**. Run the following command to build the TensorRT engine (it can take a few minutes). Put the new TRT engines to the engines folder.
 
     ```bash
-    python3 face_identifier/convert_identifier.py
+    python3 onnx_to_trt.py
     ```
 
 7. Test the camera:

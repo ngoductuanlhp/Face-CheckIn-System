@@ -6,7 +6,7 @@ import cv2
 import threading
 import time
 
-OPENNI2_PATH = '/home/tuan/FRCheckInSystem/src/utils'
+OPENNI2_PATH = './utils'
 
 class OrbCamera:
     def __init__(self):
