@@ -4,6 +4,9 @@
 
 In this project, we develop and deploy a **check-in system based on Face Recognition** on **Jetson Nano** embedded computer.
 
+![alt text](https://github.com/[ngoductuanlhp]/[FRCheckInSystem]/blob/[master]/jetson_nano.jpeg?raw=true)
+
+
 ## Requirements
 
 ### Hardware
